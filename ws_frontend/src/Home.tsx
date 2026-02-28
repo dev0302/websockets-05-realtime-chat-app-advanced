@@ -9,6 +9,7 @@ function Home() {
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const [room, setRoom] = useState("");
   const [showInfo, setShowInfo] = useState(false);
+  const [serverReady, setServerReady] = useState(false);
 
   const rooms = [
     "Fantastic Four",
@@ -17,6 +18,7 @@ function Home() {
     "MetalicMinds",
   ];
 
+  /* Title animation */
   useEffect(() => {
     if (!titleRef.current) return;
 
@@ -36,19 +38,43 @@ function Home() {
     );
   }, []);
 
+  /* Cold start detection */
+  useEffect(() => {
+    const checkServer = async () => {
+      try {
+        await fetch(baseUrl, { method: "GET" });
+        setServerReady(true);
+      } catch {
+        setTimeout(checkServer, 2000);
+      }
+    };
+
+    checkServer();
+  }, [baseUrl]);
+
   const title = "WebSocket Chat App";
 
   const handleJoin = () => {
-    if (!room.trim()) return;
+    if (!room.trim() || !serverReady) return;
     navigate(`/room/${room.replace(/\s+/g, "-").toLowerCase()}`);
   };
 
   return (
     <>
+      {/* Cold Start Spinner */}
+      {!serverReady && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex flex-col items-center justify-center text-white">
+          <div className="w-12 h-12 border-4 border-slate-600 border-t-blue-500 rounded-full animate-spin" />
+          <p className="mt-4 text-slate-300 text-sm text-center max-w-xs">
+            Please wait a few seconds, server is cold starting…
+          </p>
+        </div>
+      )}
+
       {/* Main Page */}
       <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 text-white">
         <div className="p-8 rounded-xl bg-slate-900/70 backdrop-blur shadow-xl w-[90%] max-w-2xl space-y-8 text-center">
-          
+
           {/* Title */}
           <h1 ref={titleRef} className="text-3xl font-bold overflow-hidden">
             {title.split("").map((char, index) => (
@@ -58,17 +84,16 @@ function Home() {
             ))}
           </h1>
 
-          {/* Subtitle + Info Button */}
+          {/* Subtitle + Info */}
           <div className="flex items-center justify-center gap-2">
             <p className="text-slate-300">
-              Real-time chat powered by <b>WebSockets</b>. Join a room or create your own.
+              Real-time chat powered by <b>WebSockets</b>.
             </p>
 
             <button
               onClick={() => setShowInfo(true)}
               className="w-5 h-5 rounded-full border border-slate-500 text-xs
                          flex items-center justify-center hover:bg-slate-700 transition"
-              title="Know about this mini project"
             >
               i
             </button>
@@ -77,13 +102,13 @@ function Home() {
           {/* Preset Rooms */}
           <div className="space-y-3">
             <p className="font-medium">Popular Rooms</p>
-
             <div className="grid grid-cols-2 gap-3">
               {rooms.map((room) => (
                 <Link
                   key={room}
                   to={`/room/${room.replace(/\s+/g, "-").toLowerCase()}`}
-                  className="rounded-lg border border-slate-700 px-4 py-3 hover:bg-slate-800 transition text-sm font-medium"
+                  className={`rounded-lg border border-slate-700 px-4 py-3 text-sm font-medium
+                    ${serverReady ? "hover:bg-slate-800" : "opacity-50 pointer-events-none"}`}
                 >
                   {room}
                 </Link>
@@ -91,21 +116,25 @@ function Home() {
             </div>
           </div>
 
-          {/* Create / Join Room */}
+          {/* Join Room */}
           <div className="space-y-3">
             <p className="font-medium">Create or Join a Room</p>
 
             <div className="flex gap-2">
               <input
+                disabled={!serverReady}
                 value={room}
                 onChange={(e) => setRoom(e.target.value)}
                 placeholder="Enter room name..."
-                className="flex-1 rounded-lg bg-slate-800 border border-slate-700 px-4 py-2 outline-none focus:border-blue-500"
+                className="flex-1 rounded-lg bg-slate-800 border border-slate-700 px-4 py-2
+                           outline-none focus:border-blue-500 disabled:opacity-50"
               />
 
               <button
+                disabled={!serverReady}
                 onClick={handleJoin}
-                className="rounded-lg bg-blue-600 px-5 py-2 font-medium hover:bg-blue-500 transition"
+                className="rounded-lg bg-blue-600 px-5 py-2 font-medium
+                           hover:bg-blue-500 transition disabled:opacity-50"
               >
                 Join
               </button>
@@ -118,58 +147,36 @@ function Home() {
         </div>
       </div>
 
-      {/* Info Modal */}
+      {/* Info Modal (unchanged) */}
       {showInfo && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-40"
           onClick={() => setShowInfo(false)}
         >
           <div
-            className="bg-slate-900 rounded-xl p-6 w-[90%] max-w-xl text-left space-y-4"
+            className="bg-slate-900 rounded-xl p-6 w-[90%] max-w-xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">
-                About This Mini Project
-              </h2>
-              <button
-                onClick={() => setShowInfo(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                ✕
-              </button>
+            <div className="flex justify-between">
+              <h2 className="text-xl font-semibold">About This Mini Project</h2>
+              <button onClick={() => setShowInfo(false)}>✕</button>
             </div>
 
-            {/* Features */}
-            <div>
-              <h3 className="font-medium mb-2">🚀 Features</h3>
-              <ul className="list-disc list-inside text-slate-300 text-sm space-y-1">
-                <li>Real-time messaging using WebSockets</li>
-                <li>Room-based chat system</li>
-                <li>Live online users list (per room)</li>
-                <li>Typing indicator with auto-clear</li>
-                <li>Auto-reconnect & network awareness</li>
-                <li>Server-side message timestamps</li>
-                <li>In-memory state management</li>
-                <li>Polished dark-themed UI</li>
-              </ul>
-            </div>
+            <h3 className="font-medium">🚀 Features</h3>
+            <ul className="list-disc list-inside text-sm text-slate-300 space-y-1">
+              <li>Real-time messaging using WebSockets</li>
+              <li>Room-based chat system</li>
+              <li>Live online users list</li>
+              <li>Typing indicator</li>
+              <li>Auto reconnect</li>
+            </ul>
 
-            {/* Future Improvements */}
-            <div>
-              <h3 className="font-medium mb-2">🧩 What’s Left / Future Improvements</h3>
-              <ul className="list-disc list-inside text-slate-300 text-sm space-y-1">
-                <li>Message persistence using a database</li>
-                <li>User authentication & authorization</li>
-                <li>Chat history loading on reconnect</li>
-                <li>Read receipts & delivery status</li>
-                <li>Private (1-to-1) messaging</li>
-                <li>File / image sharing</li>
-                <li>Scalable state management (Redis)</li>
-                <li>Deployment & production optimizations</li>
-              </ul>
-            </div>
+            <h3 className="font-medium">🧩 What’s Left</h3>
+            <ul className="list-disc list-inside text-sm text-slate-300 space-y-1">
+              <li>Message persistence</li>
+              <li>Authentication</li>
+              <li>Private messaging</li>
+            </ul>
           </div>
         </div>
       )}
