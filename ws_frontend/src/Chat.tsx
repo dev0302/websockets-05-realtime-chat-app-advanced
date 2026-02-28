@@ -291,7 +291,7 @@ function Chat() {
 
   // ---------------- UI ----------------
   return (
-    <div className="h-screen w-full bg-[#01030b] flex justify-center">
+    <div className="h-[calc(100vh-2rem)] w-full bg-[#01030b] flex justify-center sm:h-screen">
       <div className="w-11/12 h-[90%] m-auto flex flex-col">
 
       {/* CONNECTION STATUS DIV */}
