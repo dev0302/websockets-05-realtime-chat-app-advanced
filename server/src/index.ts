@@ -56,6 +56,11 @@ wss.on("connection", (socket) => {
         //     }
         // }
 
+        // to check if server off or cold-starting
+        if (parsedMessage.type === "ping") {
+            socket.send(JSON.stringify({ type: "pong" }));
+        }
+
         // for typing effect
         if (parsedMessage.type === "typing") {
             const currentUser = allSockets.find(

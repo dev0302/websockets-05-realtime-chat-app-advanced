@@ -1,6 +1,9 @@
 import gsap from "gsap";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { Spinner } from "./components/ui/spinner";
+import { Socket } from "dgram";
+
 
 interface ChatMessage {
   message: string;
@@ -32,10 +35,44 @@ function Chat() {
 
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
 
+  const [serverStarting, setServerStarting] = useState(true);
+
   // ask username once
   if (!usernameRef.current) {
     usernameRef.current = prompt("Enter your username") || "Guest";
   }
+
+  // to check server on or off
+  const checkServerHealth = () => {
+    const socketUrl = import.meta.env.VITE_API_URL;
+    return new Promise((resolve) => {
+      const ws = new WebSocket(socketUrl);
+
+      const timeout = setTimeout(() => {
+        ws.close();
+        resolve(false);
+      }, 5000);
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: "ping" }));
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === "pong") {
+          clearTimeout(timeout);
+          ws.close();
+          resolve(true);
+        }
+      };
+
+      ws.onerror = () => {
+        clearTimeout(timeout);
+        resolve(false);
+      };
+    });
+  };
 
   function sendTyping() {
     // prevent spam (cooldown active)
@@ -82,6 +119,28 @@ function Chat() {
     inputRef.current!.value = "";
   }
 
+  useEffect(() => {
+    let cancelled = false
+
+    const check = async () => {
+      const isUp = await checkServerHealth()
+      if (!cancelled) {
+        if (isUp) {
+          setServerStarting(false)
+        } else {
+          setTimeout(check, 3000) // retry every 3s
+        }
+      }
+    }
+
+    check()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+ 
   useEffect(() => {
     const handleOffline = () => {
       isOnlineRef.current = false;
@@ -289,9 +348,21 @@ function Chat() {
     };
   }, []);
 
+   if (serverStarting) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-4">
+        <Spinner className="size-4" />
+        <p className="text-sm text-muted-foreground">
+          Wait a few seconds, server is cold starting…
+        </p>
+      </div>
+    )
+  }
+
+
   // ---------------- UI ----------------
   return (
-    <div className="h-[calc(100vh-2rem)] w-full bg-[#01030b] flex justify-center sm:h-screen">
+    <div className="h-[calc(100vh-4rem)] w-full bg-[#01030b] flex justify-center sm:h-screen">
       <div className="w-11/12 h-[90%] m-auto flex flex-col">
 
       {/* CONNECTION STATUS DIV */}
